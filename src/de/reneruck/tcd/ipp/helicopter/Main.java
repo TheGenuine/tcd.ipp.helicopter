@@ -13,7 +13,6 @@ public class Main {
 		} else {
 			helicopter = new Helicopter();
 		}
-//		helicopter.setDaemon(true);
 		helicopter.start();
 	}
 }
