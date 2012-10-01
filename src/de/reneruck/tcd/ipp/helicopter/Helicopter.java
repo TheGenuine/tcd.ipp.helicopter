@@ -8,17 +8,16 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeoutException;
 
-import com.google.gson.Gson;
-
 import de.reneruck.tcd.datamodel.Airport;
 import de.reneruck.tcd.datamodel.TransportContainer;
+import de.reneruck.tcd.ipp.serializer.Serializer;
 
 public class Helicopter extends Thread {
 
 	private static final int RADAR_PORT = 8765;
 	private static final byte[] ACC_CONTENT = new byte[]{97,97,99};
-	private static final String CAMP_RADAR = null;
-	private static final String CITY_RADAR = null;
+	private static final String CAMP_RADAR = "localhost";
+	private static final String CITY_RADAR = "localhost";
 	private static final int FLIGHT_TIME_IN_MS = 90000;
 	private static final int MAX_RETRIES = 3; 
 	
@@ -34,8 +33,15 @@ public class Helicopter extends Thread {
 	}
 	
 	private static Helicopter handleArgs(String args) {
-		Gson gson = new Gson();
-		return gson.fromJson(args, Helicopter.class);
+		Serializer serializer = new Serializer();
+		Object deserialized = serializer.deserialize(args.getBytes());
+		if(deserialized instanceof Helicopter)
+		{
+			return (Helicopter) deserialized;
+		} else {
+			System.err.println("deserialized was not a Helicopter, returning new one");
+			return new Helicopter();
+		}
 	}
 
 	@Override
@@ -204,9 +210,9 @@ public class Helicopter extends Thread {
 
 	@Override
 	public String toString() {
-		Gson gson = new Gson();
-		String json = gson.toJson(this);
-		return json;
+		Serializer serializer = new Serializer();
+		byte[] serialize = serializer.serialize(this);
+		return new String(serialize);
 	}
 	
 	private void calcGetsLost()	{
