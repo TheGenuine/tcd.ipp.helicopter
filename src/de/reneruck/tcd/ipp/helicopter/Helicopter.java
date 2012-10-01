@@ -15,6 +15,7 @@ import de.reneruck.tcd.datamodel.TransportContainer;
 
 public class Helicopter extends Thread {
 
+	private static final int RADAR_PORT = 8765;
 	private static final byte[] ACC_CONTENT = new byte[]{97,97,99};
 	private static final String CAMP_RADAR = null;
 	private static final String CITY_RADAR = null;
@@ -148,9 +149,9 @@ public class Helicopter extends Thread {
 			
 			Socket socket = null;
 			if(Airport.camp.equals(this.target)){
-				socket = new Socket(InetAddress.getByName(CAMP_RADAR), 8765);
+				socket = new Socket(InetAddress.getByName(CAMP_RADAR), RADAR_PORT);
 			} else if(Airport.city.equals(this.target)){
-				socket = new Socket(InetAddress.getByName(CITY_RADAR), 8765);
+				socket = new Socket(InetAddress.getByName(CITY_RADAR), RADAR_PORT);
 			}
 			SocketChannel channel = socket.getChannel();
 			channel.write(ByteBuffer.wrap(toString().getBytes()));
