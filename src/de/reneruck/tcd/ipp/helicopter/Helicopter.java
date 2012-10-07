@@ -1,11 +1,12 @@
 package de.reneruck.tcd.ipp.helicopter;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 import java.util.concurrent.TimeoutException;
 
 import de.reneruck.tcd.datamodel.Airport;
@@ -14,35 +15,25 @@ import de.reneruck.tcd.ipp.serializer.Serializer;
 
 public class Helicopter extends Thread {
 
+	private static final byte[] RADAR_CONTACT = new byte[]{61,63,63,67};
 	private static final int RADAR_PORT = 8765;
-	private static final byte[] ACC_CONTENT = new byte[]{97,97,99};
+	private static final byte[] ACC_CONTENT = new byte[]{97,99,99};
 	private static final String CAMP_RADAR = "localhost";
 	private static final String CITY_RADAR = "localhost";
-	private static final int FLIGHT_TIME_IN_MS = 90000;
+	private static final int FLIGHT_TIME_IN_MS = 20000;
 	private static final int MAX_RETRIES = 3; 
 	
 	private boolean getsLost = false;
-	private int flightTimeElapsedInMs = 0;
-	private Airport target;
 	private boolean inFlight = false;
 	private boolean radarContacted = false;
+	private int flightTimeElapsedInMs = 0;
+	private Airport target;
 	private TransportContainer container;
-	
-	public static Helicopter createNewHelicopter(String args) {
-		return handleArgs(args);
+
+	public Helicopter() {
+		this.container = new TransportContainer();
 	}
 	
-	private static Helicopter handleArgs(String args) {
-		Serializer serializer = new Serializer();
-		Object deserialized = serializer.deserialize(args.getBytes());
-		if(deserialized instanceof Helicopter)
-		{
-			return (Helicopter) deserialized;
-		} else {
-			System.err.println("deserialized was not a Helicopter, returning new one");
-			return new Helicopter();
-		}
-	}
 
 	@Override
 	public void run() {
@@ -67,10 +58,10 @@ public class Helicopter extends Thread {
 			this.flightTimeElapsedInMs += System.currentTimeMillis() - timeMillis;
 			printElapsedTime();
 			
-			if(this.flightTimeElapsedInMs >= FLIGHT_TIME_IN_MS/2 && !this.radarContacted)
-			{
-				handoverToRadar();
-			}
+//			if(this.flightTimeElapsedInMs >= FLIGHT_TIME_IN_MS/2 && !this.radarContacted)
+//			{
+//				handoverToRadar();
+//			}
 			
 			if(this.flightTimeElapsedInMs >= FLIGHT_TIME_IN_MS)
 			{
@@ -97,7 +88,7 @@ public class Helicopter extends Thread {
 
 	private void waitForTakeOff() {
 		try {
-			System.out.println("waiting for clearance for take off");
+			System.out.println("waiting for clearance to take off");
 			Thread.sleep(8000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -136,15 +127,20 @@ public class Helicopter extends Thread {
 	}
 
 	private void exchangeTransitions() {
-		System.out.print("exchanging tranisions");
-		// TODO Auto-generated method stub
-		System.out.println(" [DONE]");
+		System.out.println("exchanging tranisions");
+		
+		TransitionExchange transitionExchange = new TransitionExchange(this.container);
+		transitionExchange.startExchange();
+		
+		System.out.println("[DONE]");
 	}
 
 	private void handoverToRadar() {
 		System.out.println("handing over to RADAR");
 		if(contactRadar())
 		{
+			System.out.println("Handover succesfully");
+			System.out.println("Shuting down");
 			this.radarContacted = true;
 			System.exit(1);
 		}
@@ -159,9 +155,11 @@ public class Helicopter extends Thread {
 			} else if(Airport.city.equals(this.target)){
 				socket = new Socket(InetAddress.getByName(CITY_RADAR), RADAR_PORT);
 			}
-			SocketChannel channel = socket.getChannel();
-			channel.write(ByteBuffer.wrap(toString().getBytes()));
-			waitForAcc(channel);
+			InputStream inputStream = socket.getInputStream();
+			OutputStream outputStream = socket.getOutputStream();
+			outputStream.write(RADAR_CONTACT);
+			outputStream.flush();
+			waitForAcc(inputStream);
 			return true;
 			
 		} catch (UnknownHostException e) {
@@ -179,40 +177,38 @@ public class Helicopter extends Thread {
 		}
 	}
 	
-	private void waitForAcc(SocketChannel channel) throws IOException, InterruptedException, TimeoutException {
+	private void waitForAcc(InputStream inputStream) throws IOException, InterruptedException, TimeoutException {
 		boolean acc = false;
 		int retries = 0;
-		ByteBuffer buffer = ByteBuffer.allocate(1000);
+		byte[] buffer = new byte[1000];
 		do {
-			int readBytes = channel.read(buffer);
-			
-			if(readBytes > 0)
-			{
-				if(verifyResponse(buffer)){
-					acc = true;
-				}
+			System.out.println("Waiting for response");
+			inputStream.read(buffer);
+			if(verifyResponse(buffer)){
+				acc = true;
+				System.out.println("received proper acc");
 			}
 			this.sleep(1000);
 			retries ++;
-		} while (acc | retries > MAX_RETRIES);
+		} while (acc | (retries > MAX_RETRIES));
 		if(!acc && retries > MAX_RETRIES) {
+			System.err.println("Waiting for ACC timed out");
 			throw new TimeoutException();
 		}
 	}
 
-	private boolean verifyResponse(ByteBuffer buffer) {
-		if(ACC_CONTENT.equals(buffer.array()))
+	private boolean verifyResponse(byte[] bytes) {
+		byte[] copyOfRange = Arrays.copyOfRange(bytes, 0, 3);
+		if(ACC_CONTENT.equals(copyOfRange))
 		{
 			return true;
 		}
 		return false;
 	}
 
-	@Override
-	public String toString() {
-		Serializer serializer = new Serializer();
-		byte[] serialize = serializer.serialize(this);
-		return new String(serialize);
+	private byte[] serialize() {
+		byte[] serialized = null;
+		return serialized;
 	}
 	
 	private void calcGetsLost()	{
