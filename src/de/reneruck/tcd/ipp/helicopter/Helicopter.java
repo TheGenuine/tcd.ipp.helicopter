@@ -6,12 +6,13 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import de.reneruck.tcd.datamodel.Airport;
 import de.reneruck.tcd.datamodel.TransportContainer;
-import de.reneruck.tcd.ipp.serializer.Serializer;
 
 public class Helicopter extends Thread {
 
@@ -23,15 +24,18 @@ public class Helicopter extends Thread {
 	private static final int FLIGHT_TIME_IN_MS = 20000;
 	private static final int MAX_RETRIES = 3; 
 	
+	private List<InetAddress> dbServers = new ArrayList<InetAddress>();
 	private boolean getsLost = false;
 	private boolean inFlight = false;
 	private boolean radarContacted = false;
 	private int flightTimeElapsedInMs = 0;
 	private Airport target;
 	private TransportContainer container;
-
+	private DatabaseDiscoverer dbDiscoverer;
+	
 	public Helicopter() {
 		this.container = new TransportContainer();
+		startDbDiscoverer();
 	}
 	
 
@@ -41,6 +45,7 @@ public class Helicopter extends Thread {
 		{
 			calcGetsLost();
 			exchangeTransitions();
+			stopDbDiscoverer();
 			waitForTakeOff();
 			depart();
 		} else {
@@ -58,10 +63,11 @@ public class Helicopter extends Thread {
 			this.flightTimeElapsedInMs += System.currentTimeMillis() - timeMillis;
 			printElapsedTime();
 			
-//			if(this.flightTimeElapsedInMs >= FLIGHT_TIME_IN_MS/2 && !this.radarContacted)
-//			{
+			if(this.flightTimeElapsedInMs >= FLIGHT_TIME_IN_MS/2 && !this.radarContacted)
+			{
+				startDbDiscoverer();
 //				handoverToRadar();
-//			}
+			}
 			
 			if(this.flightTimeElapsedInMs >= FLIGHT_TIME_IN_MS)
 			{
@@ -72,6 +78,20 @@ public class Helicopter extends Thread {
 			}
 		}
 	}
+
+	private void startDbDiscoverer() {
+		this.dbDiscoverer = new DatabaseDiscoverer(this.dbServers);
+		this.dbDiscoverer.setRunning(true);
+		this.dbDiscoverer.start();
+	}
+	
+	private void stopDbDiscoverer() {
+		this.dbDiscoverer.interrupt();
+		this.dbDiscoverer.setRunning(false);
+		this.dbDiscoverer = null;
+		this.dbServers.clear();
+	}
+
 
 	private void getLost() {
 		if(this.getsLost)
@@ -108,7 +128,6 @@ public class Helicopter extends Thread {
 		this.flightTimeElapsedInMs = 0;
 		this.radarContacted = false;
 		setNextTarget();
-		calcGetsLost();
 		System.out.println("ready for take off");
 	}
 
@@ -124,15 +143,14 @@ public class Helicopter extends Thread {
 	private void land() {
 		System.out.println("landing");
 		this.inFlight = false;
+		stopDbDiscoverer();
 	}
 
 	private void exchangeTransitions() {
 		System.out.println("exchanging tranisions");
 		
-		TransitionExchange transitionExchange = new TransitionExchange(this.container);
+		TransitionExchange transitionExchange = new TransitionExchange(this.container, this.dbServers);
 		transitionExchange.startExchange();
-		
-		System.out.println("[DONE]");
 	}
 
 	private void handoverToRadar() {
@@ -188,7 +206,7 @@ public class Helicopter extends Thread {
 				acc = true;
 				System.out.println("received proper acc");
 			}
-			this.sleep(1000);
+			Thread.sleep(1000);
 			retries ++;
 		} while (acc | (retries > MAX_RETRIES));
 		if(!acc && retries > MAX_RETRIES) {

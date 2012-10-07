@@ -5,8 +5,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
@@ -16,26 +14,18 @@ import de.reneruck.tcd.datamodel.TransportContainer;
 
 public class TransitionExchange {
 
-	private static int MAX_TRIES = 3;
-	private List<InetAddress> dbServers = new ArrayList<InetAddress>();
+	private static int MAX_TRIES = 10;
 
 	private TransportContainer container;
 	private Socket socket;
 	private boolean listen = true;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
-	private DatabaseDiscoverer dbDiscoverer;
+	private List<InetAddress> dbServers;
 
-	public TransitionExchange(TransportContainer container) {
+	public TransitionExchange(TransportContainer container, List<InetAddress> dbServers) {
 		this.container = container;
-		this.dbDiscoverer = new DatabaseDiscoverer(this.dbServers);
-		this.dbDiscoverer.setRunning(true);
-		this.dbDiscoverer.start();
-		try {
-			this.dbServers.add(InetAddress.getByName("localhost"));
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		}
+		this.dbServers = dbServers;
 	}
 
 	public void startExchange() {
@@ -45,7 +35,7 @@ public class TransitionExchange {
 			send(Statics.SYN);
 			waitForAnswer();
 		} catch (TimeoutException e) {
-
+			System.out.println("No Server found");
 		}
 
 	}
@@ -102,7 +92,7 @@ public class TransitionExchange {
 	private void handle(Object input) {
 		if (input instanceof String) {
 			String message = (String) input;
-			System.out.println("Received: " + message);
+			System.out.println("<Received: " + message);
 
 			if (message.equals(Statics.ACK)) {
 				send(Statics.ACK + Statics.ACK);
@@ -128,8 +118,6 @@ public class TransitionExchange {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		this.dbDiscoverer.shutdown();
-		this.dbDiscoverer = null;
 	}
 
 	private void transferTransitions() {
@@ -146,6 +134,7 @@ public class TransitionExchange {
 
 	private void send(String message) {
 		try {
+			System.out.println("Sending> " + message);
 			this.out.writeObject(message);
 			this.out.flush();
 		} catch (IOException e) {

@@ -37,11 +37,21 @@ public class DatabaseDiscoverer extends Thread {
 		setupDatagramSocket();
 		sendBroadcast();
 		listenForDatabaseServers();
+		shutdown();
+		System.err.println("DatabaseDiscoverer shutdown");
+	}
+
+	private void shutdown() {
+		if(this.listeningSocket != null)
+		{
+			System.err.println("closing all sockets");
+			this.listeningSocket.close();
+		} 
 	}
 
 	private void setupDatagramSocket() {
 		try {
-			this.listeningSocket = new DatagramSocket(Statics.DB_SERVER_PORT);
+			this.listeningSocket = new DatagramSocket(Statics.DISCOVERY_PORT+1);
 		} catch (SocketException e) {
 			e.printStackTrace();
 		}
@@ -49,19 +59,23 @@ public class DatabaseDiscoverer extends Thread {
 
 	private void listenForDatabaseServers() {
 		if (this.listeningSocket != null) {
-			byte[] buffer = new byte[2048];
+			byte[] buffer = new byte[100];
 			DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 			while (this.running && this.dbServers.isEmpty()) {
 				try {
 					this.listeningSocket.receive(packet);
 					InetAddress address = packet.getAddress();
-					if (!address.equals(InetAddress.getLocalHost()) && !this.dbServers.contains(address)) {
+					System.out.println("Discovered server at " + address);
+					if (/*!address.equals(InetAddress.getLocalHost()) && */!this.dbServers.contains(address)) {
 						this.dbServers.add(address);
 					}
 				} catch (IOException e) {
 					System.err.println("Failed to read socket " + e.getMessage());
+				} finally {
+					this.listeningSocket.close();
 				}
 			}
+			System.err.println("Finished searching, found " + this.dbServers.size() + " Server");
 		} else {
 			System.err.println("No listening socket available");
 		}
@@ -72,24 +86,23 @@ public class DatabaseDiscoverer extends Thread {
 		InetAddress broadcastAdress = getBroadcastAdress();
 		if (broadcastAdress != null) {
 			try {
+				System.out.println("Sending broadcast to " + broadcastAdress);
 				DatagramSocket socket = new DatagramSocket();
-				byte[] buf = new byte[] { 83, 89, 78 };
-				DatagramPacket packet = new DatagramPacket(buf, buf.length, broadcastAdress, Statics.DB_SERVER_PORT);
+				byte[] buf = Statics.SYN.getBytes();
+				DatagramPacket packet = new DatagramPacket(buf, buf.length, broadcastAdress, Statics.DISCOVERY_PORT);
 
 				for (int i = 0; i < 3; i++) {
 					socket.send(packet);
+					Thread.sleep(500);
 				}
 			} catch (SocketException e) {
 				e.printStackTrace();
 			} catch (IOException e) {
 				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
 		}
-	}
-
-	public void shutdown() {
-		this.running = false;
-		this.listeningSocket.close();
 	}
 
 	public boolean isRunning() {
