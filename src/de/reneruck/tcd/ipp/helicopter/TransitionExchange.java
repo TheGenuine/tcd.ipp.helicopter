@@ -34,6 +34,7 @@ public class TransitionExchange {
 			establishConnection();
 			send(Statics.SYN);
 			waitForAnswer();
+			shutdown();
 		} catch (TimeoutException e) {
 			System.out.println("No Server found");
 		}
@@ -75,7 +76,6 @@ public class TransitionExchange {
 
 	private void waitForAnswer() {
 		try {
-
 			do {
 				Thread.sleep(500);
 				handle(this.in.readObject());
@@ -86,6 +86,8 @@ public class TransitionExchange {
 			e.printStackTrace();
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
+		} finally {
+			shutdown();
 		}
 	}
 

@@ -65,7 +65,10 @@ public class Helicopter extends Thread {
 			
 			if(this.flightTimeElapsedInMs >= FLIGHT_TIME_IN_MS/2 && !this.radarContacted)
 			{
-				startDbDiscoverer();
+				if(this.dbDiscoverer == null)
+				{
+					startDbDiscoverer();
+				}
 //				handoverToRadar();
 			}
 			
@@ -80,16 +83,15 @@ public class Helicopter extends Thread {
 	}
 
 	private void startDbDiscoverer() {
+		this.dbServers.clear();
 		this.dbDiscoverer = new DatabaseDiscoverer(this.dbServers);
 		this.dbDiscoverer.setRunning(true);
 		this.dbDiscoverer.start();
 	}
 	
 	private void stopDbDiscoverer() {
-		this.dbDiscoverer.interrupt();
 		this.dbDiscoverer.setRunning(false);
 		this.dbDiscoverer = null;
-		this.dbServers.clear();
 	}
 
 

@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -44,14 +46,16 @@ public class DatabaseDiscoverer extends Thread {
 	private void shutdown() {
 		if(this.listeningSocket != null)
 		{
-			System.err.println("closing all sockets");
+			this.listeningSocket.disconnect();
 			this.listeningSocket.close();
 		} 
 	}
 
 	private void setupDatagramSocket() {
 		try {
-			this.listeningSocket = new DatagramSocket(Statics.DISCOVERY_PORT+1);
+			this.listeningSocket = new DatagramSocket(null);
+			this.listeningSocket.setReuseAddress(true);
+			this.listeningSocket.bind(new InetSocketAddress(Statics.DISCOVERY_PORT+1));
 		} catch (SocketException e) {
 			e.printStackTrace();
 		}
