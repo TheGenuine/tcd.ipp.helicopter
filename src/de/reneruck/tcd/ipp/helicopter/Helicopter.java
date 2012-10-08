@@ -130,6 +130,7 @@ public class Helicopter extends Thread {
 		this.flightTimeElapsedInMs = 0;
 		this.radarContacted = false;
 		setNextTarget();
+		calcGetsLost();
 		System.out.println("ready for take off");
 	}
 
