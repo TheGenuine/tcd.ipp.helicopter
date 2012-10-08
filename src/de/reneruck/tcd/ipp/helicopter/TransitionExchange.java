@@ -65,6 +65,7 @@ public class TransitionExchange {
 
 	private void establishConnection() {
 		try {
+			System.out.println("Establishing connection to " + this.dbServers.get(0));
 			this.socket = new Socket(this.dbServers.get(0), Statics.DB_SERVER_PORT);
 			this.in = new ObjectInputStream(this.socket.getInputStream());
 			this.out = new ObjectOutputStream(this.socket.getOutputStream());
