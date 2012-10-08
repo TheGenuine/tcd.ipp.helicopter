@@ -22,18 +22,6 @@ public class DatabaseDiscoverer extends Thread {
 		this.dbServers = dbServers;
 	}
 
-	private InetAddress getBroadcastAdress() {
-		try {
-			InetAddress localhost = InetAddress.getLocalHost();
-			byte[] address = localhost.getAddress();
-			address[3] = -1;
-			return InetAddress.getByAddress(address);
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
 	@Override
 	public void run() {
 		setupDatagramSocket();
