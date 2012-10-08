@@ -5,6 +5,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.MulticastSocket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -14,7 +15,7 @@ import de.reneruck.tcd.datamodel.Statics;
 public class DatabaseDiscoverer extends Thread {
 
 	private List<InetAddress> dbServers;
-	private DatagramSocket listeningSocket;
+	private MulticastSocket listeningSocket;
 	private boolean running;
 
 	public DatabaseDiscoverer(List<InetAddress> dbServers) {
@@ -36,7 +37,6 @@ public class DatabaseDiscoverer extends Thread {
 	@Override
 	public void run() {
 		setupDatagramSocket();
-		sendBroadcast();
 		listenForDatabaseServers();
 		shutdown();
 		System.err.println("DatabaseDiscoverer shutdown");
@@ -52,10 +52,14 @@ public class DatabaseDiscoverer extends Thread {
 
 	private void setupDatagramSocket() {
 		try {
-			this.listeningSocket = new DatagramSocket(null);
+			InetAddress group = InetAddress.getByName("230.0.0.1");
+			this.listeningSocket = new MulticastSocket(null);
+			this.listeningSocket.joinGroup(group);
 			this.listeningSocket.setReuseAddress(true);
-			this.listeningSocket.bind(new InetSocketAddress(Statics.DISCOVERY_PORT+1));
+			this.listeningSocket.bind(new InetSocketAddress(Statics.DISCOVERY_PORT));
 		} catch (SocketException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -69,7 +73,7 @@ public class DatabaseDiscoverer extends Thread {
 					this.listeningSocket.receive(packet);
 					InetAddress address = packet.getAddress();
 					System.out.println("Discovered server at " + address);
-					if (/*!address.equals(InetAddress.getLocalHost()) && */!this.dbServers.contains(address)) {
+					if (!this.dbServers.contains(address)) {
 						this.dbServers.add(address);
 					}
 				} catch (IOException e) {
@@ -83,29 +87,6 @@ public class DatabaseDiscoverer extends Thread {
 			System.err.println("No listening socket available");
 		}
 
-	}
-
-	private void sendBroadcast() {
-		InetAddress broadcastAdress = getBroadcastAdress();
-		if (broadcastAdress != null) {
-			try {
-				System.out.println("Sending broadcast to " + broadcastAdress);
-				DatagramSocket socket = new DatagramSocket();
-				byte[] buf = Statics.SYN.getBytes();
-				DatagramPacket packet = new DatagramPacket(buf, buf.length, broadcastAdress, Statics.DISCOVERY_PORT);
-
-				for (int i = 0; i < 3; i++) {
-					socket.send(packet);
-					Thread.sleep(500);
-				}
-			} catch (SocketException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
 	}
 
 	public boolean isRunning() {
