@@ -2,16 +2,24 @@ package de.reneruck.tcd.ipp.helicopter;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.List;
 
 import de.reneruck.tcd.datamodel.Statics;
 
+/**
+ * The {@link DatabaseDiscoverer} constitutes listening part of discovery service.<br>
+ * It is joining the specified multicast group and listens for all incoming packages. 
+ * Every incoming package from a new sender will be added to list of available servers.
+ * This list is also available to the caller of this thread, in that way the outside 
+ * world gets the discovered servers.
+ * 
+ * @author Rene
+ *
+ */
 public class DatabaseDiscoverer extends Thread {
 
 	private List<InetAddress> dbServers;
