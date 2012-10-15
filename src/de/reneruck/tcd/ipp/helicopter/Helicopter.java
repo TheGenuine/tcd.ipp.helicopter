@@ -11,8 +11,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-import de.reneruck.tcd.datamodel.Airport;
-import de.reneruck.tcd.datamodel.TransportContainer;
+import de.reneruck.tcd.ipp.datamodel.Airport;
+import de.reneruck.tcd.ipp.datamodel.TransportContainer;
 
 public class Helicopter extends Thread {
 

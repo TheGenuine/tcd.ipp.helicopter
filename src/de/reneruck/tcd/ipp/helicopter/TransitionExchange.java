@@ -8,9 +8,9 @@ import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-import de.reneruck.tcd.datamodel.Statics;
-import de.reneruck.tcd.datamodel.Transition;
-import de.reneruck.tcd.datamodel.TransportContainer;
+import de.reneruck.tcd.ipp.datamodel.Statics;
+import de.reneruck.tcd.ipp.datamodel.Transition;
+import de.reneruck.tcd.ipp.datamodel.TransportContainer;
 
 public class TransitionExchange {
 

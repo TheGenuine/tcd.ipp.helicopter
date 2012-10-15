@@ -8,7 +8,7 @@ import java.net.MulticastSocket;
 import java.net.SocketException;
 import java.util.List;
 
-import de.reneruck.tcd.datamodel.Statics;
+import de.reneruck.tcd.ipp.datamodel.Statics;
 
 /**
  * The {@link DatabaseDiscoverer} constitutes listening part of discovery service.<br>
