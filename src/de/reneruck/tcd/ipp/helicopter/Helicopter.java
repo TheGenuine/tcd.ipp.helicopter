@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import de.reneruck.tcd.ipp.datamodel.Airport;
+import de.reneruck.tcd.ipp.datamodel.Statics;
 import de.reneruck.tcd.ipp.datamodel.TemporalTransitionsStore;
 
 public class Helicopter extends Thread {
@@ -40,10 +41,10 @@ public class Helicopter extends Thread {
 
 	@Override
 	public void run() {
-		if(!this.inFlight)
+		if(!this.inFlight) // initial 
 		{
 			calcGetsLost();
-			exchangeTransitions();
+			exchangeTransitions(Statics.RX_HELI);
 			stopDbDiscoverer();
 			waitForTakeOff();
 			depart();
@@ -62,6 +63,7 @@ public class Helicopter extends Thread {
 			this.flightTimeElapsedInMs += System.currentTimeMillis() - timeMillis;
 			printElapsedTime();
 			
+			// when on half way to target
 			if(this.flightTimeElapsedInMs >= FLIGHT_TIME_IN_MS/2 && !this.radarContacted)
 			{
 				if(this.dbDiscoverer == null)
@@ -71,11 +73,13 @@ public class Helicopter extends Thread {
 //				handoverToRadar();
 			}
 			
+			// when arrived
 			if(this.flightTimeElapsedInMs >= FLIGHT_TIME_IN_MS)
 			{
 				land();
-				exchangeTransitions();
+				exchangeTransitions(Statics.RX_SERVER);
 				waitForTakeOff();
+				exchangeTransitions(Statics.RX_HELI);
 				depart();				
 			}
 		}
@@ -148,10 +152,10 @@ public class Helicopter extends Thread {
 		stopDbDiscoverer();
 	}
 
-	private void exchangeTransitions() {
+	private void exchangeTransitions(String mode) {
 		System.out.println("exchanging tranisions");
 		
-		TransitionExchange transitionExchange = new TransitionExchange(this.transitionStore, this.dbServers);
+		TransitionExchange transitionExchange = new TransitionExchange(this.transitionStore, this.dbServers, mode);
 		transitionExchange.startExchange();
 	}
 
