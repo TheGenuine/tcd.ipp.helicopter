@@ -13,7 +13,6 @@ import java.util.concurrent.TimeoutException;
 
 import de.reneruck.tcd.ipp.datamodel.Airport;
 import de.reneruck.tcd.ipp.datamodel.TemporalTransitionsStore;
-import de.reneruck.tcd.ipp.datamodel.TransportContainer;
 
 public class Helicopter extends Thread {
 
