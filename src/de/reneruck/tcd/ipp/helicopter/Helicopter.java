@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import de.reneruck.tcd.ipp.datamodel.Airport;
+import de.reneruck.tcd.ipp.datamodel.TemporalTransitionsStore;
 import de.reneruck.tcd.ipp.datamodel.TransportContainer;
 
 public class Helicopter extends Thread {
@@ -30,11 +31,10 @@ public class Helicopter extends Thread {
 	private boolean radarContacted = false;
 	private int flightTimeElapsedInMs = 0;
 	private Airport target;
-	private TransportContainer container;
+	private TemporalTransitionsStore transitionStore = new TemporalTransitionsStore();
 	private DatabaseDiscoverer dbDiscoverer;
 	
 	public Helicopter() {
-		this.container = new TransportContainer();
 		startDbDiscoverer();
 	}
 	
@@ -152,7 +152,7 @@ public class Helicopter extends Thread {
 	private void exchangeTransitions() {
 		System.out.println("exchanging tranisions");
 		
-		TransitionExchange transitionExchange = new TransitionExchange(this.container, this.dbServers);
+		TransitionExchange transitionExchange = new TransitionExchange(this.transitionStore, this.dbServers);
 		transitionExchange.startExchange();
 	}
 
