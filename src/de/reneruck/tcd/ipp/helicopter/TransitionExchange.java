@@ -12,6 +12,7 @@ import de.reneruck.tcd.ipp.datamodel.Callback;
 import de.reneruck.tcd.ipp.datamodel.Datagram;
 import de.reneruck.tcd.ipp.datamodel.Statics;
 import de.reneruck.tcd.ipp.datamodel.TemporalTransitionsStore;
+import de.reneruck.tcd.ipp.datamodel.TransitionExchangeBean;
 import de.reneruck.tcd.ipp.fsm.Action;
 import de.reneruck.tcd.ipp.fsm.FiniteStateMachine;
 import de.reneruck.tcd.ipp.fsm.SimpleState;
@@ -32,12 +33,16 @@ public class TransitionExchange implements Callback{
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
 	private List<InetAddress> dbServers;
+	private String mode;
+	private TransitionExchangeBean transitionExchangeBean;
 
 	private FiniteStateMachine fsm;
 
-	public TransitionExchange(TemporalTransitionsStore transitionStore, List<InetAddress> dbServers) {
+	public TransitionExchange(TemporalTransitionsStore transitionStore, List<InetAddress> dbServers, String mode) {
 		this.transitionStore = transitionStore;
 		this.dbServers = dbServers;
+		this.mode = mode;
+		this.transitionExchangeBean = new TransitionExchangeBean();
 		setupFSM();
 	}
 
@@ -52,14 +57,14 @@ public class TransitionExchange implements Callback{
 		SimpleState state_SendData = new SimpleState("SendData");
 		SimpleState state_finished = new SimpleState("finished");
 
-		Action sendSYN = new SendControlSignal(this.out, Statics.SYN);
-		Action sendSYNACK = new SendControlSignal(this.out, Statics.SYNACK);
-		Action sendRxServer = new SendControlSignal(this.out, Statics.RX_SERVER);
-		Action sendRxHeli = new SendControlSignal(this.out, Statics.RX_HELI);
-		Action receiveData = new ReceiveData(this.out, this.transitionStore);
-		Action sendData = new SendData(this.out, this.transitionStore);
-		Action sendFIN = new SendControlSignal(this.out, Statics.FIN);
-		Action sendFIN_ACK = new SendControlSignal(this.out, Statics.FINACK);
+		Action sendSYN = new SendControlSignal(this.transitionExchangeBean, Statics.SYN);
+		Action sendSYNACK = new SendControlSignal(this.transitionExchangeBean, Statics.SYNACK);
+		Action sendRxServer = new SendControlSignal(this.transitionExchangeBean, Statics.RX_SERVER);
+		Action sendRxHeli = new SendControlSignal(this.transitionExchangeBean, Statics.RX_HELI);
+		Action receiveData = new ReceiveData(this.transitionExchangeBean, this.transitionStore);
+		Action sendData = new SendData(this.transitionExchangeBean, this.transitionStore);
+		Action sendFIN = new SendControlSignal(this.transitionExchangeBean, Statics.FIN);
+		Action sendFIN_ACK = new SendControlSignal(this.transitionExchangeBean, Statics.FINACK);
 		Action shutdownConnection = new ShutdownConnection(this);
 
 		Transition txSyn = new Transition(new TransitionEvent("sendSyn"), state_syn, sendSYN);
@@ -68,7 +73,7 @@ public class TransitionExchange implements Callback{
 		Transition txMode_send = new Transition(new TransitionEvent("sendMode_send"), state_waitRxModeAck, sendRxServer);
 		Transition txMode_receive = new Transition(new TransitionEvent("sendMode_receive"), state_waitRxModeAck, sendRxHeli);
 		
-		Transition rxMode_Heli_ack = new Transition(new TransitionEvent(Statics.RX_HELI_ACK), state_ReceiveData, receiveData);
+		Transition rxMode_Heli_ack = new Transition(new TransitionEvent(Statics.RX_HELI_ACK), state_ReceiveData, null);
 		Transition rxMode_Server_ack = new Transition(new TransitionEvent(Statics.RX_SERVER_ACK), state_SendData, sendData);
 
 		Transition rxDataAck = new Transition(new TransitionEvent(Statics.ACK), state_SendData, sendData);
@@ -98,7 +103,8 @@ public class TransitionExchange implements Callback{
 		state_finished.addTranstion(shutdown);
 
 		this.fsm.setStartState(state_start);
-
+		
+		this.transitionExchangeBean.setFsm(this.fsm);
 	}
 
 	
@@ -106,13 +112,18 @@ public class TransitionExchange implements Callback{
 		try {
 			waitForServer();
 			establishConnection();
-			send(Statics.SYN);
+			kickOffFSM();
 			waitForAnswer();
-			shutdown();
 		} catch (TimeoutException e) {
 			System.out.println("No Server found");
+		} catch (Exception e) {
+			System.err.println("Error in the FSM");
 		}
 
+	}
+
+	private void kickOffFSM() throws Exception {
+		this.fsm.handleEvent(new TransitionEvent("sendSyn"));
 	}
 
 	private void waitForServer() throws TimeoutException {
@@ -144,6 +155,9 @@ public class TransitionExchange implements Callback{
 			this.in = new ObjectInputStream(this.socket.getInputStream());
 			this.out = new ObjectOutputStream(this.socket.getOutputStream());
 			this.out.flush();
+			
+			this.transitionExchangeBean.setIn(this.in);
+			this.transitionExchangeBean.setOut(this.out);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -151,10 +165,10 @@ public class TransitionExchange implements Callback{
 
 	private void waitForAnswer() {
 		try {
-			do {
+			while (this.listen){
 				Thread.sleep(500);
 				handle(this.in.readObject());
-			} while (this.listen);
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
@@ -168,9 +182,18 @@ public class TransitionExchange implements Callback{
 
 	private void handle(Object input) {
 		if (input instanceof Datagram) {
+			System.out.println("Received Datagram: " + ((Datagram)input).getType());
 			TransitionEvent event = getTransitionEventFromDatagram((Datagram) input);
 			try {
 				this.fsm.handleEvent(event);
+				
+				if("acked".equals(this.fsm.getCurrentState().getIdentifier())) {
+					if(Statics.RX_HELI.equals(this.mode)) {
+						this.fsm.handleEvent(new TransitionEvent("sendMode_receive"));					
+					} else {
+						this.fsm.handleEvent(new TransitionEvent("sendMode_send"));					
+					}
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -188,6 +211,7 @@ public class TransitionExchange implements Callback{
 	}
 	
 	private void shutdown() {
+		System.out.println("Shutting connection down");
 		this.listen = false;
 		try {
 			this.out.close();

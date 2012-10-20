@@ -1,34 +1,38 @@
 package de.reneruck.tcd.ipp.helicopter.actions;
 
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.ObjectOutputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import de.reneruck.tcd.ipp.datamodel.Callback;
 import de.reneruck.tcd.ipp.datamodel.Datagram;
 import de.reneruck.tcd.ipp.datamodel.Statics;
 import de.reneruck.tcd.ipp.datamodel.TemporalTransitionsStore;
 import de.reneruck.tcd.ipp.datamodel.Transition;
-import de.reneruck.tcd.ipp.datamodel.TransitionState;
+import de.reneruck.tcd.ipp.datamodel.TransitionExchangeBean;
 import de.reneruck.tcd.ipp.fsm.Action;
 import de.reneruck.tcd.ipp.fsm.TransitionEvent;
 
 public class SendData implements Action, Callback {
 
-	private OutputStream out;
+	private ObjectOutputStream out;
 	private DataSender sender;
 	private Map<Long, Transition> dataset = new HashMap<Long, Transition>();
 	private TemporalTransitionsStore transitionsStore;
+	private TransitionExchangeBean bean;
 
-	public SendData(OutputStream out, TemporalTransitionsStore transitionsStore ) {
-		this.out = out;
+	public SendData(TransitionExchangeBean transitionExchangeBean, TemporalTransitionsStore transitionsStore ) {
+		this.bean = transitionExchangeBean;
 		this.transitionsStore = transitionsStore;
 	}
 
 	@Override
 	public void execute(TransitionEvent event) throws Exception {
+		System.out.println("Sending data so Server");
+		if(this.out == null) {
+			this.out = this.bean.getOut();
+		}
 		if(this.sender == null) {
 			initializeDataSender();
 		}
@@ -49,15 +53,16 @@ public class SendData implements Action, Callback {
 	@Override
 	public void handleCallback() {
 		this.sender = null;
+		if(this.out == null) {
+			this.out = this.bean.getOut();
+		}
 		try {
-			this.out.write(new Datagram(Statics.FIN).toString().getBytes());
+			this.out.writeObject(new Datagram(Statics.FIN));
 			this.out.flush();
-			try {
-				// FIXME: let the fsm handle Statics.FINISH_RX_HELI
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			this.bean.getFsm().handleEvent(new TransitionEvent(Statics.FINISH_RX_SERVER));
 		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
