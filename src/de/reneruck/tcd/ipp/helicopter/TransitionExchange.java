@@ -12,7 +12,6 @@ import de.reneruck.tcd.ipp.datamodel.Callback;
 import de.reneruck.tcd.ipp.datamodel.Datagram;
 import de.reneruck.tcd.ipp.datamodel.Statics;
 import de.reneruck.tcd.ipp.datamodel.TemporalTransitionsStore;
-import de.reneruck.tcd.ipp.datamodel.TransportContainer;
 import de.reneruck.tcd.ipp.fsm.Action;
 import de.reneruck.tcd.ipp.fsm.FiniteStateMachine;
 import de.reneruck.tcd.ipp.fsm.SimpleState;
@@ -44,46 +43,59 @@ public class TransitionExchange implements Callback{
 
 	private void setupFSM() {
 		this.fsm = new FiniteStateMachine();
+		
 		SimpleState state_start = new SimpleState("start");
 		SimpleState state_syn = new SimpleState("syn");
-		SimpleState state_waitRxMode = new SimpleState("waitRxMode");
+		SimpleState state_acked = new SimpleState("acked");
+		SimpleState state_waitRxModeAck = new SimpleState("waitRxModeAck");
 		SimpleState state_ReceiveData = new SimpleState("ReceiveData");
 		SimpleState state_SendData = new SimpleState("SendData");
-		SimpleState state_fin = new SimpleState("finish");
+		SimpleState state_finished = new SimpleState("finished");
 
-		Action sendACK = new SendControlSignal(this.out, Statics.ACK);
-		Action sendRxServerAck = new SendControlSignal(this.out, Statics.RX_SERVER_ACK);
-		Action sendRxHeliAck = new SendControlSignal(this.out, Statics.RX_HELI_ACK);
+		Action sendSYN = new SendControlSignal(this.out, Statics.SYN);
+		Action sendSYNACK = new SendControlSignal(this.out, Statics.SYNACK);
+		Action sendRxServer = new SendControlSignal(this.out, Statics.RX_SERVER);
+		Action sendRxHeli = new SendControlSignal(this.out, Statics.RX_HELI);
 		Action receiveData = new ReceiveData(this.out, this.transitionStore);
 		Action sendData = new SendData(this.out, this.transitionStore);
 		Action sendFIN = new SendControlSignal(this.out, Statics.FIN);
 		Action sendFIN_ACK = new SendControlSignal(this.out, Statics.FINACK);
 		Action shutdownConnection = new ShutdownConnection(this);
 
-		Transition rxSyn = new Transition(new TransitionEvent(Statics.SYN), state_syn, sendACK);
-		Transition rxSynAck = new Transition(new TransitionEvent(Statics.SYNACK), state_waitRxMode, null);
-		Transition rxAck = new Transition(new TransitionEvent(Statics.ACK), state_SendData, sendData);
+		Transition txSyn = new Transition(new TransitionEvent("sendSyn"), state_syn, sendSYN);
+		Transition rxAck = new Transition(new TransitionEvent(Statics.ACK), state_acked, sendSYNACK);
+		
+		Transition txMode_send = new Transition(new TransitionEvent("sendMode_send"), state_waitRxModeAck, sendRxServer);
+		Transition txMode_receive = new Transition(new TransitionEvent("sendMode_receive"), state_waitRxModeAck, sendRxHeli);
+		
+		Transition rxMode_Heli_ack = new Transition(new TransitionEvent(Statics.RX_HELI_ACK), state_ReceiveData, receiveData);
+		Transition rxMode_Server_ack = new Transition(new TransitionEvent(Statics.RX_SERVER_ACK), state_SendData, sendData);
 
-		Transition rxSendData = new Transition(new TransitionEvent(Statics.RX_HELI), state_SendData, sendData);
-		Transition rxReceiveData = new Transition(new TransitionEvent(Statics.RX_SERVER), state_ReceiveData, sendRxServerAck);
+		Transition rxDataAck = new Transition(new TransitionEvent(Statics.ACK), state_SendData, sendData);
 		Transition rxData = new Transition(new TransitionEvent(Statics.DATA), state_ReceiveData, receiveData);
 
-		Transition finishedSending = new Transition(new TransitionEvent(Statics.FINISH_RX_HELI), state_fin, sendFIN);
-		Transition rxFin = new Transition(new TransitionEvent(Statics.FIN), state_fin, sendFIN_ACK);
+		Transition finishedSending = new Transition(new TransitionEvent(Statics.FINISH_RX_SERVER), state_finished, sendFIN);
+		Transition rxFin = new Transition(new TransitionEvent(Statics.FIN), state_finished, sendFIN_ACK);
 		Transition rxFinACK = new Transition(new TransitionEvent(Statics.FINACK), null, shutdownConnection);
 		Transition shutdown = new Transition(new TransitionEvent(Statics.SHUTDOWN), null, shutdownConnection);
 
-		state_start.addTranstion(rxSyn);
-		state_syn.addTranstion(rxSyn);
-		state_syn.addTranstion(rxSynAck);
-		state_waitRxMode.addTranstion(rxReceiveData);
-		state_waitRxMode.addTranstion(rxSendData);
-		state_SendData.addTranstion(rxAck);
+		state_start.addTranstion(txSyn);
+		state_syn.addTranstion(rxAck);
+		state_syn.addTranstion(txSyn);
+		state_acked.addTranstion(txMode_send);
+		state_acked.addTranstion(txMode_receive);
+		
+		state_waitRxModeAck.addTranstion(rxMode_Heli_ack);
+		state_waitRxModeAck.addTranstion(rxMode_Server_ack);
+		
+		state_SendData.addTranstion(rxDataAck);
 		state_SendData.addTranstion(finishedSending);
+		
 		state_ReceiveData.addTranstion(rxData);
 		state_ReceiveData.addTranstion(rxFin);
-		state_fin.addTranstion(rxFinACK);
-		state_fin.addTranstion(shutdown);
+		
+		state_finished.addTranstion(rxFinACK);
+		state_finished.addTranstion(shutdown);
 
 		this.fsm.setStartState(state_start);
 
