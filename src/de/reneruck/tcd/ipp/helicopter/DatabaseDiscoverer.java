@@ -72,8 +72,11 @@ public class DatabaseDiscoverer extends Thread {
 					if (!this.dbServers.contains(address)) {
 						this.dbServers.add(address);
 					}
+					Thread.sleep(500);
 				} catch (IOException e) {
 					System.err.println("Failed to read socket " + e.getMessage());
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				} finally {
 					this.listeningSocket.close();
 				}
