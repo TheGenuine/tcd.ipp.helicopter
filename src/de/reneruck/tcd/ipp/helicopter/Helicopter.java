@@ -229,11 +229,6 @@ public class Helicopter extends Thread {
 		}
 		return false;
 	}
-
-	private byte[] serialize() {
-		byte[] serialized = null;
-		return serialized;
-	}
 	
 	private void calcGetsLost()	{
 		double rand = Math.random() * 10;
