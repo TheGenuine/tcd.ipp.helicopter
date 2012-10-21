@@ -30,7 +30,7 @@ public class Helicopter extends Thread {
 	private boolean inFlight = false;
 	private boolean radarContacted = false;
 	private int flightTimeElapsedInMs = 0;
-	private Airport target;
+	private Airport target = Airport.city;
 	private TemporalTransitionsStore transitionStore = new TemporalTransitionsStore();
 	private DatabaseDiscoverer dbDiscoverer;
 	
@@ -87,7 +87,7 @@ public class Helicopter extends Thread {
 
 	private void startDbDiscoverer() {
 		this.dbServers.clear();
-		this.dbDiscoverer = new DatabaseDiscoverer(this.dbServers);
+		this.dbDiscoverer = new DatabaseDiscoverer(this.dbServers, this.target);
 		this.dbDiscoverer.setRunning(true);
 		this.dbDiscoverer.start();
 	}
@@ -155,7 +155,12 @@ public class Helicopter extends Thread {
 	private void exchangeTransitions(String mode) {
 		System.out.println("exchanging tranisions");
 		
-		TransitionExchange transitionExchange = new TransitionExchange(this.transitionStore, this.dbServers, mode);
+		createTranistionExchange(mode, this.dbServers);
+	}
+
+
+	private void createTranistionExchange(String mode, List<InetAddress> servers) {
+		TransitionExchange transitionExchange = new TransitionExchange(this.transitionStore, servers, mode, this.target);
 		transitionExchange.startExchange();
 	}
 

@@ -8,6 +8,7 @@ import java.net.MulticastSocket;
 import java.net.SocketException;
 import java.util.List;
 
+import de.reneruck.tcd.ipp.datamodel.Airport;
 import de.reneruck.tcd.ipp.datamodel.Statics;
 
 /**
@@ -25,13 +26,16 @@ public class DatabaseDiscoverer extends Thread {
 	private List<InetAddress> dbServers;
 	private MulticastSocket listeningSocket;
 	private boolean running;
+	private Airport targetAirport;
 
-	public DatabaseDiscoverer(List<InetAddress> dbServers) {
+	public DatabaseDiscoverer(List<InetAddress> dbServers, Airport target) {
 		this.dbServers = dbServers;
+		this.targetAirport = target;
 	}
 
 	@Override
 	public void run() {
+		System.err.println("DatabaseDiscoverer startup");
 		setupDatagramSocket();
 		listenForDatabaseServers();
 		shutdown();
@@ -52,11 +56,22 @@ public class DatabaseDiscoverer extends Thread {
 			this.listeningSocket = new MulticastSocket(null);
 			this.listeningSocket.joinGroup(group);
 			this.listeningSocket.setReuseAddress(true);
-			this.listeningSocket.bind(new InetSocketAddress(Statics.DISCOVERY_PORT));
+			this.listeningSocket.bind(getsocketAdress());
 		} catch (SocketException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+
+	private InetSocketAddress getsocketAdress() {
+		switch (this.targetAirport) {
+		case camp:
+			return new InetSocketAddress(Statics.CLIENT_DISCOVERY_PORT);
+		case city:
+			return new InetSocketAddress(Statics.DISCOVERY_PORT);
+		default:
+			return new InetSocketAddress(Statics.DISCOVERY_PORT);
 		}
 	}
 
