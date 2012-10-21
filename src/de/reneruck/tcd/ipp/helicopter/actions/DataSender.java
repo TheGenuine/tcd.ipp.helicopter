@@ -2,7 +2,6 @@ package de.reneruck.tcd.ipp.helicopter.actions;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 

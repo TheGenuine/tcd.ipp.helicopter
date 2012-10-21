@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import de.reneruck.tcd.ipp.datamodel.Callback;
-import de.reneruck.tcd.ipp.datamodel.Datagram;
 import de.reneruck.tcd.ipp.datamodel.Statics;
 import de.reneruck.tcd.ipp.datamodel.TemporalTransitionsStore;
 import de.reneruck.tcd.ipp.datamodel.Transition;
@@ -57,8 +56,6 @@ public class SendData implements Action, Callback {
 			this.out = this.bean.getOut();
 		}
 		try {
-			this.out.writeObject(new Datagram(Statics.FIN));
-			this.out.flush();
 			this.bean.getFsm().handleEvent(new TransitionEvent(Statics.FINISH_RX_SERVER));
 		} catch (IOException e) {
 			e.printStackTrace();
