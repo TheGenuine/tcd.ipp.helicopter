@@ -5,6 +5,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
@@ -111,6 +112,11 @@ public class TransitionExchange implements Callback{
 	
 	public void startExchange() {
 		try {
+			this.dbServers.add(InetAddress.getByName("192.168.1.19"));
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
+		try {
 			waitForServer();
 			establishConnection();
 			kickOffFSM();
@@ -152,7 +158,7 @@ public class TransitionExchange implements Callback{
 	private void establishConnection() {
 		try {
 			System.out.println("Establishing connection to " + this.dbServers.get(0));
-			this.socket = new Socket(this.dbServers.get(0), Statics.DB_SERVER_PORT);
+			this.socket = new Socket(this.dbServers.get(0), Statics.CLIENT_PORT);
 			this.in = new ObjectInputStream(this.socket.getInputStream());
 			this.out = new ObjectOutputStream(this.socket.getOutputStream());
 			this.out.flush();
