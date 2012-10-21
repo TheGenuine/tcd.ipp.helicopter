@@ -1,7 +1,7 @@
 package de.reneruck.tcd.ipp.helicopter.actions;
 
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.ObjectOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,7 +15,7 @@ import de.reneruck.tcd.ipp.fsm.TransitionEvent;
 
 public class ReceiveData implements Action {
 
-	private OutputStream out;
+	private ObjectOutputStream out;
 	private TemporalTransitionsStore transitionStorage;
 	private TransitionExchangeBean bean;
 
@@ -29,6 +29,7 @@ public class ReceiveData implements Action {
 		Object content = event.getParameter(Statics.CONTENT_TRANSITION);
 		if(content != null && content instanceof Transition) {
 			this.transitionStorage.addTransition((Transition)content);
+			System.out.println("Received " + ((Transition)content).getTransitionId());
 			sendAck(content);
 		} else {
 			System.err.println("Invalid event content");
@@ -37,11 +38,11 @@ public class ReceiveData implements Action {
 
 	private void sendAck(Object content) throws IOException {
 		if(this.out == null) {
-			this.bean.getOut();
+			this.out = this.bean.getOut();
 		}
 		Map<String, Object> datagramPayload = new HashMap<String, Object>();
 		datagramPayload.put(Statics.TRAMSITION_ID, ((Transition)content).getTransitionId());
-		this.out.write(new Datagram(Statics.ACK, datagramPayload).toString().getBytes());
+		this.out.writeObject(new Datagram(Statics.ACK, datagramPayload));
 		this.out.flush();
 	}
 }
