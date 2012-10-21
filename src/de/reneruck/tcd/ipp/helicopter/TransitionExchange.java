@@ -5,10 +5,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
+import de.reneruck.tcd.ipp.datamodel.Airport;
 import de.reneruck.tcd.ipp.datamodel.Callback;
 import de.reneruck.tcd.ipp.datamodel.Datagram;
 import de.reneruck.tcd.ipp.datamodel.Statics;
@@ -19,6 +19,7 @@ import de.reneruck.tcd.ipp.fsm.FiniteStateMachine;
 import de.reneruck.tcd.ipp.fsm.SimpleState;
 import de.reneruck.tcd.ipp.fsm.Transition;
 import de.reneruck.tcd.ipp.fsm.TransitionEvent;
+import de.reneruck.tcd.ipp.helicopter.actions.FinackAndShutdown;
 import de.reneruck.tcd.ipp.helicopter.actions.ReceiveData;
 import de.reneruck.tcd.ipp.helicopter.actions.SendControlSignal;
 import de.reneruck.tcd.ipp.helicopter.actions.SendData;
@@ -36,14 +37,16 @@ public class TransitionExchange implements Callback{
 	private List<InetAddress> dbServers;
 	private String mode;
 	private TransitionExchangeBean transitionExchangeBean;
+	private Airport targetAirport;
 
 	private FiniteStateMachine fsm;
 
-	public TransitionExchange(TemporalTransitionsStore transitionStore, List<InetAddress> dbServers, String mode) {
+	public TransitionExchange(TemporalTransitionsStore transitionStore, List<InetAddress> dbServers, String mode, Airport target) {
 		this.transitionStore = transitionStore;
 		this.dbServers = dbServers;
 		this.mode = mode;
 		this.transitionExchangeBean = new TransitionExchangeBean();
+		this.targetAirport = target;
 		setupFSM();
 	}
 
@@ -65,8 +68,8 @@ public class TransitionExchange implements Callback{
 		Action receiveData = new ReceiveData(this.transitionExchangeBean, this.transitionStore);
 		Action sendData = new SendData(this.transitionExchangeBean, this.transitionStore);
 		Action sendFIN = new SendControlSignal(this.transitionExchangeBean, Statics.FIN);
-		Action sendFIN_ACK = new SendControlSignal(this.transitionExchangeBean, Statics.FINACK);
 		Action shutdownConnection = new ShutdownConnection(this);
+		Action sendFinackAndShutdon = new FinackAndShutdown(this.transitionExchangeBean, this);
 
 		Transition txSyn = new Transition(new TransitionEvent("sendSyn"), state_syn, sendSYN);
 		Transition rxAck = new Transition(new TransitionEvent(Statics.ACK), state_acked, sendSYNACK);
@@ -81,9 +84,8 @@ public class TransitionExchange implements Callback{
 		Transition rxData = new Transition(new TransitionEvent(Statics.DATA), state_ReceiveData, receiveData);
 
 		Transition finishedSending = new Transition(new TransitionEvent(Statics.FINISH_RX_SERVER), state_finished, sendFIN);
-		Transition rxFin = new Transition(new TransitionEvent(Statics.FIN), state_finished, sendFIN_ACK);
+		Transition rxFin = new Transition(new TransitionEvent(Statics.FIN), null, sendFinackAndShutdon);
 		Transition rxFinACK = new Transition(new TransitionEvent(Statics.FINACK), null, shutdownConnection);
-		Transition shutdown = new Transition(new TransitionEvent(Statics.SHUTDOWN), null, shutdownConnection);
 
 		state_start.addTranstion(txSyn);
 		state_syn.addTranstion(rxAck);
@@ -102,7 +104,6 @@ public class TransitionExchange implements Callback{
 		
 		state_finished.addTranstion(rxFinACK);
 		state_finished.addTranstion(rxFin);
-		state_finished.addTranstion(shutdown);
 
 		this.fsm.setStartState(state_start);
 		
@@ -111,11 +112,6 @@ public class TransitionExchange implements Callback{
 
 	
 	public void startExchange() {
-		try {
-			this.dbServers.add(InetAddress.getByName("192.168.1.19"));
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		}
 		try {
 			waitForServer();
 			establishConnection();
@@ -158,7 +154,7 @@ public class TransitionExchange implements Callback{
 	private void establishConnection() {
 		try {
 			System.out.println("Establishing connection to " + this.dbServers.get(0));
-			this.socket = new Socket(this.dbServers.get(0), Statics.CLIENT_PORT);
+			this.socket = new Socket(this.dbServers.get(0), getPortToConnect());
 			this.in = new ObjectInputStream(this.socket.getInputStream());
 			this.out = new ObjectOutputStream(this.socket.getOutputStream());
 			this.out.flush();
@@ -167,6 +163,17 @@ public class TransitionExchange implements Callback{
 			this.transitionExchangeBean.setOut(this.out);
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+
+	private int getPortToConnect() {
+		switch (this.targetAirport) {
+		case camp:
+			return Statics.CLIENT_PORT;
+		case city:
+			return Statics.DB_SERVER_PORT;
+		default:
+			return Statics.DB_SERVER_PORT;
 		}
 	}
 
@@ -189,14 +196,14 @@ public class TransitionExchange implements Callback{
 			try {
 				this.fsm.handleEvent(event);
 				
-				if("acked".equals(this.fsm.getCurrentState().getIdentifier())) {
+				if(this.fsm.getCurrentState() != null && "acked".equals(this.fsm.getCurrentState().getIdentifier())) {
 					if(Statics.RX_HELI.equals(this.mode)) {
 						this.fsm.handleEvent(new TransitionEvent("sendMode_receive"));					
 					} else {
 						this.fsm.handleEvent(new TransitionEvent("sendMode_send"));					
 					}
 				}
-				if("finished".equals(this.fsm.getCurrentState().getIdentifier())) {
+				if(this.fsm.getCurrentState() != null && "finished".equals(this.fsm.getCurrentState().getIdentifier())) {
 					this.fsm.handleEvent(new TransitionEvent(Statics.SHUTDOWN));
 				}
 			} catch (Exception e) {
@@ -215,7 +222,7 @@ public class TransitionExchange implements Callback{
 		return event;
 	}
 	
-	private void shutdown() {
+	public void shutdown() {
 		System.out.println("Shutting connection down");
 		this.listen = false;
 		try {
