@@ -100,6 +100,7 @@ public class TransitionExchange implements Callback{
 		state_ReceiveData.addTranstion(rxFin);
 		
 		state_finished.addTranstion(rxFinACK);
+		state_finished.addTranstion(rxFin);
 		state_finished.addTranstion(shutdown);
 
 		this.fsm.setStartState(state_start);
@@ -169,11 +170,7 @@ public class TransitionExchange implements Callback{
 				Thread.sleep(500);
 				handle(this.in.readObject());
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
+		} catch (IOException |InterruptedException | ClassNotFoundException e) {
 			e.printStackTrace();
 		} finally {
 			shutdown();
@@ -182,7 +179,6 @@ public class TransitionExchange implements Callback{
 
 	private void handle(Object input) {
 		if (input instanceof Datagram) {
-			System.out.println("Received Datagram: " + ((Datagram)input).getType());
 			TransitionEvent event = getTransitionEventFromDatagram((Datagram) input);
 			try {
 				this.fsm.handleEvent(event);
@@ -193,6 +189,9 @@ public class TransitionExchange implements Callback{
 					} else {
 						this.fsm.handleEvent(new TransitionEvent("sendMode_send"));					
 					}
+				}
+				if("finished".equals(this.fsm.getCurrentState().getIdentifier())) {
+					this.fsm.handleEvent(new TransitionEvent(Statics.SHUTDOWN));
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -217,16 +216,6 @@ public class TransitionExchange implements Callback{
 			this.out.close();
 			this.in.close();
 			this.socket.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void send(String message) {
-		try {
-			System.out.println("Sending> " + message);
-			this.out.writeObject(message);
-			this.out.flush();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
