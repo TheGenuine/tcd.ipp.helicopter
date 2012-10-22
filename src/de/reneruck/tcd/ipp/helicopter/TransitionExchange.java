@@ -183,7 +183,11 @@ public class TransitionExchange implements Callback{
 				Thread.sleep(500);
 				handle(this.in.readObject());
 			}
-		} catch (IOException |InterruptedException | ClassNotFoundException e) {
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		} finally {
 			shutdown();
