@@ -2,13 +2,10 @@ package de.reneruck.tcd.ipp.helicopter.actions;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.util.HashMap;
-import java.util.Map;
 
 import de.reneruck.tcd.ipp.datamodel.Callback;
 import de.reneruck.tcd.ipp.datamodel.Statics;
 import de.reneruck.tcd.ipp.datamodel.TemporalTransitionsStore;
-import de.reneruck.tcd.ipp.datamodel.Transition;
 import de.reneruck.tcd.ipp.datamodel.TransitionExchangeBean;
 import de.reneruck.tcd.ipp.fsm.Action;
 import de.reneruck.tcd.ipp.fsm.TransitionEvent;
@@ -17,7 +14,6 @@ public class SendData implements Action, Callback {
 
 	private ObjectOutputStream out;
 	private DataSender sender;
-	private Map<Long, Transition> dataset = new HashMap<Long, Transition>();
 	private TemporalTransitionsStore transitionsStore;
 	private TransitionExchangeBean bean;
 
