@@ -3,7 +3,7 @@ package de.reneruck.tcd.ipp.helicopter.actions;
 import java.io.ObjectOutputStream;
 
 import de.reneruck.tcd.ipp.datamodel.Datagram;
-import de.reneruck.tcd.ipp.datamodel.TransitionExchangeBean;
+import de.reneruck.tcd.ipp.datamodel.transition.TransitionExchangeBean;
 import de.reneruck.tcd.ipp.fsm.Action;
 import de.reneruck.tcd.ipp.fsm.TransitionEvent;
 

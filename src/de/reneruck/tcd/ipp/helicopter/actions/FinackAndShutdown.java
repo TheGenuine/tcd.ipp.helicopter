@@ -4,7 +4,7 @@ import java.io.ObjectOutputStream;
 
 import de.reneruck.tcd.ipp.datamodel.Datagram;
 import de.reneruck.tcd.ipp.datamodel.Statics;
-import de.reneruck.tcd.ipp.datamodel.TransitionExchangeBean;
+import de.reneruck.tcd.ipp.datamodel.transition.TransitionExchangeBean;
 import de.reneruck.tcd.ipp.fsm.Action;
 import de.reneruck.tcd.ipp.fsm.TransitionEvent;
 import de.reneruck.tcd.ipp.helicopter.TransitionExchange;
