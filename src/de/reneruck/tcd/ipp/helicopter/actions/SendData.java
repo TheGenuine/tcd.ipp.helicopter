@@ -10,6 +10,13 @@ import de.reneruck.tcd.ipp.datamodel.transition.TransitionExchangeBean;
 import de.reneruck.tcd.ipp.fsm.Action;
 import de.reneruck.tcd.ipp.fsm.TransitionEvent;
 
+/**
+ * Initializes and starts the {@link DataSender} and handles the acknowlegement
+ * of transfered datasets.
+ * 
+ * @author Rene
+ * 
+ */
 public class SendData implements Action, Callback {
 
 	private ObjectOutputStream out;

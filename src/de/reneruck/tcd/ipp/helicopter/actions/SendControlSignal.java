@@ -7,6 +7,12 @@ import de.reneruck.tcd.ipp.datamodel.transition.TransitionExchangeBean;
 import de.reneruck.tcd.ipp.fsm.Action;
 import de.reneruck.tcd.ipp.fsm.TransitionEvent;
 
+/**
+ * Helper class to send control signals required for the correct protocol flow.
+ * 
+ * @author Rene
+ * 
+ */
 public class SendControlSignal implements Action {
 
 	private String signal;
@@ -30,7 +36,6 @@ public class SendControlSignal implements Action {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-//		System.err.println("OutputStream was null, could not send signal " + this.signal);
 	}
 
 }

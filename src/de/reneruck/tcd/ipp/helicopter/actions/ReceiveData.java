@@ -13,6 +13,13 @@ import de.reneruck.tcd.ipp.datamodel.transition.TransitionExchangeBean;
 import de.reneruck.tcd.ipp.fsm.Action;
 import de.reneruck.tcd.ipp.fsm.TransitionEvent;
 
+/**
+ * Simply receives incoming data and stores them into the internal
+ * {@link TemporalTransitionsStore}.
+ * 
+ * @author Rene
+ * 
+ */
 public class ReceiveData implements Action {
 
 	private ObjectOutputStream out;

@@ -25,9 +25,19 @@ import de.reneruck.tcd.ipp.helicopter.actions.SendControlSignal;
 import de.reneruck.tcd.ipp.helicopter.actions.SendData;
 import de.reneruck.tcd.ipp.helicopter.actions.ShutdownConnection;
 
+/**
+ * The {@link TransitionExchange} is responsible for all communication to and
+ * from the server in the city or a client in the camp.<br>
+ * A {@link TransitionExchange} gets started with the knowlege which kind of
+ * communication partner he has to expect, whether a server or a client. After a
+ * successfull data exchange the {@link TransitionExchange} shuts itself down.
+ * 
+ * @author Rene Ruck
+ * 
+ */
 public class TransitionExchange implements Callback{
 
-	private static int MAX_TRIES = 10;
+	private static int MAX_TRIES = 5;
 
 	private TemporalTransitionsStore transitionStore;
 	private Socket socket;
@@ -41,6 +51,10 @@ public class TransitionExchange implements Callback{
 
 	private FiniteStateMachine fsm;
 
+	/**
+	 * Creates a new {@link TransitionExchange} and configures everything for
+	 * the communication.
+	 */
 	public TransitionExchange(TemporalTransitionsStore transitionStore, List<InetAddress> dbServers, String mode, Airport target) {
 		this.transitionStore = transitionStore;
 		this.dbServers = dbServers;
@@ -50,6 +64,9 @@ public class TransitionExchange implements Callback{
 		setupFSM();
 	}
 
+	/**
+	 * Creates the Finite State Machine to handle the communication protocol.
+	 */
 	private void setupFSM() {
 		this.fsm = new FiniteStateMachine();
 		
@@ -110,7 +127,10 @@ public class TransitionExchange implements Callback{
 		this.transitionExchangeBean.setFsm(this.fsm);
 	}
 
-	
+	/**
+	 * Start the data exchange process with the in the constructor specified
+	 * parameters
+	 */
 	public void startExchange() {
 		try {
 			waitForServer();
@@ -194,6 +214,12 @@ public class TransitionExchange implements Callback{
 		}
 	}
 
+	/**
+	 * Verify incoming messages and pass them into the FSM to be processed.
+	 * 
+	 * @param input
+	 *            incoming message
+	 */
 	private void handle(Object input) {
 		if (input instanceof Datagram) {
 			TransitionEvent event = getTransitionEventFromDatagram((Datagram) input);

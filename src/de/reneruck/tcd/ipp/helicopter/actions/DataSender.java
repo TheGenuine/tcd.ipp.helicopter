@@ -11,6 +11,15 @@ import de.reneruck.tcd.ipp.datamodel.Statics;
 import de.reneruck.tcd.ipp.datamodel.transition.TemporalTransitionsStore;
 import de.reneruck.tcd.ipp.datamodel.transition.Transition;
 
+/**
+ * The {@link DataSender} sends all messages stored in the
+ * {@link TemporalTransitionsStore} as long as there are messages in the store.<br>
+ * After all messages have been send, he reports back to continue with the
+ * protocol.
+ * 
+ * @author Rene
+ * 
+ */
 public class DataSender extends Thread {
 
 	private TemporalTransitionsStore transitionsStore;
@@ -42,6 +51,8 @@ public class DataSender extends Thread {
 				e.printStackTrace();
 			}
 		} while (!this.transitionsStore.isEmpty());
+		
+		// report back that all messages have been successfully send
 		this.callback.handleCallback();
 	}
 
